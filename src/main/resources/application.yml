@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: kafka-upload-service
+  
+  # Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# Logging configuration
+logging:
+  level:
+    com.example.kafkaUpload: INFO
+    io.temporal: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+# Temporal configuration (for future use)
+temporal:
+  namespace: default
+  task-queue: kafka-upload-task-queue
+  # TODO: Add Temporal server configuration
+  # server-url: localhost:7233 
