@@ -21,6 +21,6 @@ public class FileProcessingMessage {
     
     public boolean isImageFile() {
         if (fileType == null) return false;
-        return fileType.toLowerCase().matches(".*\\.(jpg|jpeg|png|gif|bmp|tiff|webp)$");
+        return fileType.toLowerCase().matches("^(jpg|jpeg|png|gif|bmp|tiff|webp)$");
     }
 }
