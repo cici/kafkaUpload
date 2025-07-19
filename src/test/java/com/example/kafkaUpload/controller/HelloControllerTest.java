@@ -6,8 +6,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.hamcrest.Matchers.*;
 
 /**
  * Test class for HelloController.
@@ -23,13 +23,17 @@ class HelloControllerTest {
     void testHelloEndpoint() throws Exception {
         mockMvc.perform(get("/api/hello"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Hello World from Kafka Upload Service!"));
+                .andExpect(jsonPath("$.message", is("Hello World from Kafka Upload Service!")))
+                .andExpect(jsonPath("$.service", is("kafka-upload-service")))
+                .andExpect(jsonPath("$.features", hasSize(5)));
     }
 
     @Test
     void testHealthEndpoint() throws Exception {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Application is running successfully!"));
+                .andExpect(jsonPath("$.status", is("UP")))
+                .andExpect(jsonPath("$.service", is("kafka-upload-service")))
+                .andExpect(jsonPath("$.message", is("Application is running successfully!")));
     }
 } 

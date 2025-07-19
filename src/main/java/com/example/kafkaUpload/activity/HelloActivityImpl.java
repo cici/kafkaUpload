@@ -22,4 +22,4 @@ public class HelloActivityImpl implements HelloActivity {
         log.info("Executing sayHello activity for name: {}", name);
         return "Hello, " + name + "! Welcome to the Kafka Upload Service.";
     }
-} 
+}

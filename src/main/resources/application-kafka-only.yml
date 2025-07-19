@@ -1,8 +1,6 @@
 spring:
   application:
     name: kafka-upload-service
-  profiles:
-    active: dev
 
 # Server configuration
 server:
@@ -14,7 +12,7 @@ server:
 logging:
   level:
     com.example.kafkaUpload: INFO
-    io.temporal: INFO
+    io.temporal: WARN
     org.springframework.kafka: INFO
     org.apache.kafka: WARN
     org.apache.kafka.clients.admin.AdminClient: ERROR
@@ -44,12 +42,6 @@ kafka:
     enable-auto-commit: false
     max-poll-records: 10
 
-# Temporal configuration
-temporal:
-  target: 127.0.0.1:7233
-  namespace: default
-  task-queue: file-processing-queue
-
 # File processing configuration
 file-processing:
   test-data-directory: ./test-data
@@ -66,4 +58,4 @@ file-processing:
       processing-time-ms: 300  # Average processing time
     max-width: 200
     max-height: 200
-    format: jpg 
+    format: jpg

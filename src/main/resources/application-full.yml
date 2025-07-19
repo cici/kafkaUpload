@@ -1,8 +1,6 @@
 spring:
   application:
     name: kafka-upload-service
-  profiles:
-    active: dev
 
 # Server configuration
 server:
@@ -17,8 +15,6 @@ logging:
     io.temporal: INFO
     org.springframework.kafka: INFO
     org.apache.kafka: WARN
-    org.apache.kafka.clients.admin.AdminClient: ERROR
-    org.apache.kafka.clients.NetworkClient: ERROR
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 
@@ -66,4 +62,4 @@ file-processing:
       processing-time-ms: 300  # Average processing time
     max-width: 200
     max-height: 200
-    format: jpg 
+    format: jpg

@@ -87,20 +87,59 @@ com.example.kafkaUpload/
 - Integration tests use Spring Boot test slices
 - Example test: `HelloControllerTest.java`
 
-## Next Steps for Development
+## API Endpoints
 
-When extending this application:
+### Core Endpoints
+- `GET /api/hello` - Service information and features
+- `GET /api/health` - Basic health check
+- `GET /api/file-processing/health` - File processing service health
 
-1. **Temporal Setup**: Complete the TemporalConfig implementation
-2. **Service Layer**: Add business logic services
-3. **Repository Layer**: Add data access repositories
-4. **Models**: Add DTOs and entities for data transfer
-5. **Workflow Implementation**: Create Temporal workflow interfaces and implementations
-6. **Kafka Integration**: Add Kafka producer/consumer components
+### File Processing
+- `POST /api/file-processing/process` - Submit file processing request
+- `POST /api/file-processing/test/generate-random` - Generate random test message
+- `POST /api/file-processing/test/generate-batch?batchSize=10` - Generate batch of messages
+- `POST /api/file-processing/test/start-continuous?messagesPerSecond=10` - Start continuous load testing
+- `POST /api/file-processing/test/stop-continuous` - Stop continuous generation
+- `POST /api/file-processing/test/regenerate-samples` - Regenerate sample files
+
+## Development Workflow
+
+1. **Start the Application**: `./gradlew bootRun`
+2. **Generate Test Data**: `curl -X POST http://localhost:8080/api/file-processing/test/generate-random`
+3. **Monitor Processing**: Check logs for workflow execution
+4. **Load Testing**: Use batch generation or continuous generation endpoints
+
+## Architecture Overview
+
+The application implements a complete file processing pipeline:
+
+1. **Kafka Consumer** receives file processing messages
+2. **Temporal Workflow** orchestrates the processing steps
+3. **Virus Scan Activity** simulates file scanning (configurable failure rates)
+4. **Thumbnail Activity** creates thumbnails for image files
+5. **Results** are published back to Kafka
+
+## Configuration
+
+Key configuration properties:
+- `kafka.topic.file-processing`: Input topic for file processing requests
+- `kafka.topic.processing-results`: Output topic for processing results
+- `temporal.task-queue`: Temporal task queue name
+- `file-processing.virus-scan.simulation.failure-rate`: Virus scan failure rate (0.0-1.0)
+- `file-processing.thumbnail.simulation.failure-rate`: Thumbnail creation failure rate (0.0-1.0)
+
+## Testing
+
+The application includes comprehensive test data generation:
+- Sample files are created in `./test-data/` directory
+- Various file types supported (images, documents, etc.)
+- Configurable failure simulation for reliability testing
+- Load testing capabilities with continuous message generation
 
 ## Important Notes
 
-- The application currently has basic REST endpoints but Temporal workflows are not yet configured
-- Database configuration is not yet implemented
-- Kafka integration is planned but not yet implemented
-- The project follows Spring Boot 3.x conventions
+- Uses **embedded Kafka** for proof of concept (configured in KafkaConfig)
+- **Temporal server** must be running locally on port 7233
+- All file processing is **simulated** with configurable delays and failure rates
+- **Test data** is automatically generated on startup
+- The project follows Spring Boot 3.x conventions with Temporal integration
