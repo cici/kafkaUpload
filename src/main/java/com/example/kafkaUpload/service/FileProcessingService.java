@@ -1,17 +1,20 @@
 package com.example.kafkaUpload.service;
 
+import com.example.kafkaUpload.constants.SearchAttributeConstants;
 import com.example.kafkaUpload.kafka.FileProcessingProducer;
 import com.example.kafkaUpload.model.FileProcessingMessage;
 import com.example.kafkaUpload.model.ProcessingResult;
 import com.example.kafkaUpload.workflow.FileProcessingWorkflow;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.common.SearchAttributes;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -53,13 +56,30 @@ public class FileProcessingService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
+                // Create initial search attributes
+                SearchAttributes searchAttributes = null;
+                try {
+                    searchAttributes = SearchAttributes.newBuilder()
+                            .set(SearchAttributeConstants.VIRUS_SCAN_RESULT, "PENDING")
+                            .set(SearchAttributeConstants.COMPLETED_STEPS, new ArrayList<String>())
+                            .build();
+                    log.debug("Created initial search attributes for workflow: fileId={}", message.getFileId());
+                } catch (Exception e) {
+                    log.warn("Failed to create initial search attributes: {}", e.getMessage());
+                }
+                
                 // Create workflow options
-                WorkflowOptions options = WorkflowOptions.newBuilder()
+                WorkflowOptions.Builder optionsBuilder = WorkflowOptions.newBuilder()
                         .setTaskQueue(taskQueue)
                         .setWorkflowId("file-processing-" + message.getFileId())
                         .setWorkflowExecutionTimeout(Duration.ofMinutes(10))
-                        .setWorkflowTaskTimeout(Duration.ofMinutes(1))
-                        .build();
+                        .setWorkflowTaskTimeout(Duration.ofMinutes(1));
+                
+                if (searchAttributes != null) {
+                    optionsBuilder.setTypedSearchAttributes(searchAttributes);
+                }
+                
+                WorkflowOptions options = optionsBuilder.build();
 
                 // Create workflow stub
                 FileProcessingWorkflow workflow = workflowClient.newWorkflowStub(

@@ -20,6 +20,7 @@ import jakarta.annotation.PreDestroy;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 
+
 /**
  * Configuration class for Temporal workflow engine.
  * Sets up Temporal client, worker, and workflow registration.
@@ -40,6 +41,7 @@ public class TemporalConfig {
 
     private WorkerFactory workerFactory;
     private Worker worker;
+    private WorkflowClient workflowClient;
 
     @Bean
     public WorkflowServiceStubs workflowServiceStubs() {
@@ -57,12 +59,13 @@ public class TemporalConfig {
 
     @Bean
     public WorkflowClient workflowClient(WorkflowServiceStubs workflowServiceStubs) {
-        return WorkflowClient.newInstance(
+        this.workflowClient = WorkflowClient.newInstance(
             workflowServiceStubs,
             WorkflowClientOptions.newBuilder()
                 .setNamespace(temporalNamespace)
                 .build()
         );
+        return this.workflowClient;
     }
 
     @Bean
@@ -99,6 +102,9 @@ public class TemporalConfig {
     public void startWorker() {
         log.info("ApplicationReadyEvent received - attempting to start Temporal worker");
         
+        // First, try to register search attributes
+        registerSearchAttributes();
+        
         if (workerFactory != null && worker != null) {
             log.info("Starting Temporal worker on task queue: {}", taskQueue);
             try {
@@ -114,6 +120,20 @@ public class TemporalConfig {
                      workerFactory != null ? "✅" : "❌", 
                      worker != null ? "✅" : "❌");
         }
+    }
+
+    /**
+     * Registers custom search attributes with the Temporal server.
+     * For the development server, search attributes should be created manually using:
+     * temporal operator search-attribute create --name VirusScanResult --type Text
+     * temporal operator search-attribute create --name CompletedSteps --type KeywordList
+     */
+    private void registerSearchAttributes() {
+        log.info("📋 Search Attributes Configuration:");
+        log.info("Custom search attributes need to be created manually in development:");
+        log.info("  temporal operator search-attribute create --name VirusScanResult --type Text");
+        log.info("  temporal operator search-attribute create --name CompletedSteps --type KeywordList");
+        log.info("Search attributes will be used automatically in workflows once created.");
     }
 
     @PreDestroy
