@@ -45,31 +45,13 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
         result.setStartTime(LocalDateTime.now());
         result.setCompletedSteps(new ArrayList<>());
 
-        // Initialize search attributes
-        try {
-            Workflow.upsertTypedSearchAttributes(
-                SearchAttributeConstants.VIRUS_SCAN_RESULT.valueSet("PENDING"),
-                SearchAttributeConstants.COMPLETED_STEPS.valueSet(new ArrayList<>())
-            );
-            log.debug("Initialized search attributes for workflow");
-        } catch (Exception e) {
-            log.warn("Failed to initialize search attributes: {}", e.getMessage());
-        }
+        ScanResult scanResult = null;
 
         try {
             // Step 1: Virus Scan (required for all files)
             log.info("Executing virus scan for file: {}", message.getFilePath());
-            ScanResult scanResult = virusScanActivity.scanFile(message.getFilePath());
+            scanResult = virusScanActivity.scanFile(message.getFilePath());
             
-            // Update virus scan result search attribute
-            try {
-                Workflow.upsertTypedSearchAttributes(
-                    SearchAttributeConstants.VIRUS_SCAN_RESULT.valueSet(scanResult.getStatus().toString())
-                );
-                log.debug("Updated VirusScanResult search attribute to: {}", scanResult.getStatus());
-            } catch (Exception e) {
-                log.warn("Failed to update VirusScanResult search attribute: {}", e.getMessage());
-            }
             
             if (!scanResult.isClean()) {
                 log.warn("Virus scan failed for file: {} - Status: {}", 
@@ -83,9 +65,6 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
             result.setStatus(ProcessingResult.ProcessingStatus.VIRUS_SCAN_COMPLETED);
             log.info("Virus scan completed successfully for file: {}", message.getFilePath());
 
-            // Update completed steps search attribute
-            updateCompletedStepsSearchAttribute(result);
-
             // Step 2: Thumbnail Creation (only for image files and after successful virus scan)
             if (message.isImageFile()) {
                 log.info("File is an image, creating thumbnail for: {}", message.getFilePath());
@@ -96,9 +75,6 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
                     result.setStatus(ProcessingResult.ProcessingStatus.THUMBNAIL_COMPLETED);
                     log.info("Thumbnail created successfully for file: {} at: {}", 
                             message.getFilePath(), thumbnailResult.getThumbnailPath());
-                    
-                    // Update completed steps search attribute to include thumbnail creation
-                    updateCompletedStepsSearchAttribute(result);
                 } else {
                     log.warn("Thumbnail creation failed for file: {} - Status: {}", 
                             message.getFilePath(), thumbnailResult.getStatus());
@@ -122,28 +98,44 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
                     Duration.between(result.getStartTime(), result.getEndTime()).toMillis()
                 );
             }
+            
+            // Update search attributes once at the end of workflow execution
+            updateFinalSearchAttributes(result, scanResult);
         }
 
         return result;
     }
 
     /**
-     * Updates the CompletedSteps search attribute with the current list of completed steps.
+     * Updates all search attributes once at the end of workflow execution.
+     * This approach minimizes Temporal Cloud costs by reducing the number of search attribute operations.
      * 
-     * @param result the processing result containing completed steps
+     * @param result the processing result containing completed steps and final status
+     * @param scanResult the virus scan result (may be null if scan failed to start)
      */
-    private void updateCompletedStepsSearchAttribute(ProcessingResult result) {
+    private void updateFinalSearchAttributes(ProcessingResult result, ScanResult scanResult) {
         try {
+            // Convert completed steps to strings for search
             List<String> completedStepsStrings = result.getCompletedSteps()
                 .stream()
                 .map(Enum::toString)
                 .collect(Collectors.toList());
+            
+            // Determine virus scan status for search attribute
+            String virusScanStatus = scanResult != null 
+                ? scanResult.getStatus().toString() 
+                : "FAILED";
+            
+            // Update both search attributes in a single call
             Workflow.upsertTypedSearchAttributes(
+                SearchAttributeConstants.VIRUS_SCAN_RESULT.valueSet(virusScanStatus),
                 SearchAttributeConstants.COMPLETED_STEPS.valueSet(completedStepsStrings)
             );
-            log.debug("Updated CompletedSteps search attribute to: {}", completedStepsStrings);
+            
+            log.debug("Updated final search attributes - VirusScanResult: {}, CompletedSteps: {}", 
+                     virusScanStatus, completedStepsStrings);
         } catch (Exception e) {
-            log.warn("Failed to update CompletedSteps search attribute: {}", e.getMessage());
+            log.warn("Failed to update final search attributes: {}", e.getMessage());
         }
     }
 }
