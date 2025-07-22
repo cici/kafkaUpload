@@ -84,18 +84,7 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
             log.info("Virus scan completed successfully for file: {}", message.getFilePath());
 
             // Update completed steps search attribute
-            try {
-                List<String> completedStepsStrings = result.getCompletedSteps()
-                    .stream()
-                    .map(Enum::toString)
-                    .collect(Collectors.toList());
-                Workflow.upsertTypedSearchAttributes(
-                    SearchAttributeConstants.COMPLETED_STEPS.valueSet(completedStepsStrings)
-                );
-                log.debug("Updated CompletedSteps search attribute to: {}", completedStepsStrings);
-            } catch (Exception e) {
-                log.warn("Failed to update CompletedSteps search attribute: {}", e.getMessage());
-            }
+            updateCompletedStepsSearchAttribute(result);
 
             // Step 2: Thumbnail Creation (only for image files and after successful virus scan)
             if (message.isImageFile()) {
@@ -109,18 +98,7 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
                             message.getFilePath(), thumbnailResult.getThumbnailPath());
                     
                     // Update completed steps search attribute to include thumbnail creation
-                    try {
-                        List<String> completedStepsStrings = result.getCompletedSteps()
-                            .stream()
-                            .map(Enum::toString)
-                            .collect(Collectors.toList());
-                        Workflow.upsertTypedSearchAttributes(
-                            SearchAttributeConstants.COMPLETED_STEPS.valueSet(completedStepsStrings)
-                        );
-                        log.debug("Updated CompletedSteps search attribute to: {}", completedStepsStrings);
-                    } catch (Exception e) {
-                        log.warn("Failed to update CompletedSteps search attribute: {}", e.getMessage());
-                    }
+                    updateCompletedStepsSearchAttribute(result);
                 } else {
                     log.warn("Thumbnail creation failed for file: {} - Status: {}", 
                             message.getFilePath(), thumbnailResult.getStatus());
@@ -147,5 +125,25 @@ public class FileProcessingWorkflowImpl implements FileProcessingWorkflow {
         }
 
         return result;
+    }
+
+    /**
+     * Updates the CompletedSteps search attribute with the current list of completed steps.
+     * 
+     * @param result the processing result containing completed steps
+     */
+    private void updateCompletedStepsSearchAttribute(ProcessingResult result) {
+        try {
+            List<String> completedStepsStrings = result.getCompletedSteps()
+                .stream()
+                .map(Enum::toString)
+                .collect(Collectors.toList());
+            Workflow.upsertTypedSearchAttributes(
+                SearchAttributeConstants.COMPLETED_STEPS.valueSet(completedStepsStrings)
+            );
+            log.debug("Updated CompletedSteps search attribute to: {}", completedStepsStrings);
+        } catch (Exception e) {
+            log.warn("Failed to update CompletedSteps search attribute: {}", e.getMessage());
+        }
     }
 }
