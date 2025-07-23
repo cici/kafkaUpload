@@ -52,8 +52,6 @@ com.example.kafkaUpload/
 ├── controller/                    # REST controllers
 │   └── HelloController.java       # Basic endpoints
 ├── activity/                      # Temporal activities
-│   ├── HelloActivity.java         # Activity interface
-│   └── HelloActivityImpl.java     # Activity implementation
 ├── service/                       # Business logic (to be added)
 ├── repository/                    # Data access (to be added)
 └── model/                         # DTOs and entities (to be added)
@@ -69,7 +67,7 @@ com.example.kafkaUpload/
 
 ### Temporal Integration
 - Temporal SDK dependencies are included
-- Basic activity structure exists (`HelloActivity`)
+- Activity package structure exists for future activities
 - TemporalConfig class exists but needs implementation
 - Task queue configured as "kafka-upload-task-queue"
 

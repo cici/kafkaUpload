@@ -1,133 +1,215 @@
-# Kafka Upload Service
+# File Processing System - Complete Setup Guide
 
-A Spring Boot application that uses Temporal as the workflow engine for managing file upload workflows.
-
-## Project Structure
-
-This project follows Spring Boot best practices with a layered architecture:
-
-```
-src/
-├── main/
-│   ├── java/
-│   │   └── com/example/kafkaUpload/
-│   │       ├── KafkaUploadApplication.java    (Main entry point)
-│   │       ├── config/                        (Configuration classes)
-│   │       ├── controller/                    (REST controllers)
-│   │       ├── activity/                      (Temporal activity code)
-│   │       ├── service/                       (Business logic services)
-│   │       ├── repository/                    (Data access repositories)
-│   │       ├── model/                         (Data transfer objects)
-│   │       ├── exception/                     (Custom exceptions)
-│   │       └── util/                          (Utility classes)
-│   └── resources/
-│       └── application.yml                    (Application configuration)
-└── test/
-    └── java/
-        └── com/example/kafkaUpload/
-            ├── KafkaUploadApplicationTests.java
-            └── controller/
-                └── HelloControllerTest.java
-```
+## Overview
+A complete file processing system with Kafka messaging and Temporal workflows for virus scanning and thumbnail generation.
 
 ## Prerequisites
+- Java 17+
+- Docker & Docker Compose
+- Temporal CLI (`brew install temporal`)
 
-- Java 17 or higher
-- Gradle 8.5 or higher
-- Temporal server (for future workflow execution)
+## Complete Setup Instructions
 
-## Getting Started
-
-### 1. Build the Project
-
+### Step 1: Start Kafka
 ```bash
-./gradlew build
+# Start Kafka and Zookeeper
+docker-compose up -d
+
+# Verify Kafka is running
+docker-compose ps
 ```
 
-### 2. Run the Application
-
+### Step 2: Start Temporal Server
 ```bash
-./gradlew bootRun
+# Start Temporal development server (in a separate terminal)
+temporal server start-dev
+
+# You should see:
+# - Temporal server running on localhost:7233
+# - Temporal Web UI on http://localhost:8233
 ```
 
-The application will start on `http://localhost:8080`
-
-### 3. Test the Application
-
+### Step 3: Start the Application
 ```bash
-# Run all tests
-./gradlew test
+# Start the Spring Boot application with full Temporal support
+SPRING_PROFILES_ACTIVE=full ./gradlew bootRun
 
-# Run the application and test endpoints
+# Look for these log messages indicating the worker started:
+# "Starting Temporal worker on task queue: file-processing-queue"
+# "Started KafkaUploadApplication"
+```
+
+### Step 4: Test the Complete Pipeline
+
+#### Basic Health Check
+```bash
 curl http://localhost:8080/api/hello
-curl http://localhost:8080/api/health
 ```
 
-## Available Endpoints
+#### Testing Options
 
-- `GET /api/hello` - Returns a hello world message
-- `GET /api/health` - Returns application health status
-- `GET /actuator/health` - Spring Boot actuator health endpoint
+**Single File Processing**
+```bash
+# Generate a single random file processing request
+curl -X POST http://localhost:8080/api/file-processing/test/generate-random
+```
 
-## Temporal Integration
+**Batch Processing**
+```bash
+# Generate a batch of 10 requests
+curl -X POST "http://localhost:8080/api/file-processing/test/generate-batch?batchSize=10"
 
-This project includes Temporal Java SDK dependencies and basic activity structure:
+# Generate a larger batch of 50 requests
+curl -X POST "http://localhost:8080/api/file-processing/test/generate-batch?batchSize=50"
 
-- **Temporal SDK**: Version 1.22.3
-- **Activity Interface**: `HelloActivity` with `sayHello` method
-- **Activity Implementation**: `HelloActivityImpl` with basic logging
+# Generate 100 requests for stress testing
+curl -X POST "http://localhost:8080/api/file-processing/test/generate-batch?batchSize=100"
+```
 
-### Next Steps for Temporal
+**Continuous Load Testing**
+```bash
+# Low load: 10 messages per second
+curl -X POST "http://localhost:8080/api/file-processing/test/start-continuous?messagesPerSecond=10"
 
-1. **Configure Temporal Client**: Add Temporal client configuration in `TemporalConfig`
-2. **Create Workflows**: Implement workflow interfaces and implementations
-3. **Set up Workers**: Configure Temporal workers to process activities
-4. **Add Workflow Execution**: Create services to start and manage workflows
+# Medium load: 50 messages per second
+curl -X POST "http://localhost:8080/api/file-processing/test/start-continuous?messagesPerSecond=50"
 
-## Configuration
+# High load: 100 messages per second
+curl -X POST "http://localhost:8080/api/file-processing/test/start-continuous?messagesPerSecond=100"
 
-The application configuration is in `src/main/resources/application.yml`:
+# Stop continuous processing
+curl -X POST http://localhost:8080/api/file-processing/test/stop-continuous
+```
 
-- **Server Port**: 8080
-- **Application Name**: kafka-upload-service
-- **Logging**: Configured for application and Temporal logs
-- **Actuator**: Health and info endpoints enabled
+**Regenerate Test Data**
+```bash
+# Regenerate sample files if needed
+curl -X POST http://localhost:8080/api/file-processing/test/regenerate-samples
+```
 
-## Development
+#### Monitor Workflow Execution
+1. **Check Application Logs** - You should see:
+   ```
+   Received file processing message: fileId=xxx, filePath=xxx
+   Starting file processing workflow for fileId: xxx
+   Starting virus scan for file: xxx
+   Virus scan completed successfully for file: xxx
+   File is an image, creating thumbnail for: xxx (if image)
+   Thumbnail created successfully for file: xxx
+   ```
 
-### Adding New Features
+2. **Check Temporal Web UI** - Open http://localhost:8233
+   - Navigate to "Workflows"
+   - You should see `file-processing-{fileId}` workflows
+   - Click on a workflow to see execution details
 
-1. **Controllers**: Add REST endpoints in the `controller` package
-2. **Services**: Add business logic in the `service` package
-3. **Activities**: Add Temporal activities in the `activity` package
-4. **Configuration**: Add configuration classes in the `config` package
+#### Advanced Testing
 
-### Testing
+**Performance Testing**
+```bash
+# Test different load levels to find system limits
+curl -X POST "http://localhost:8080/api/file-processing/test/start-continuous?messagesPerSecond=200"
+curl -X POST "http://localhost:8080/api/file-processing/test/start-continuous?messagesPerSecond=500"
 
-- **Unit Tests**: Use `@WebMvcTest` for controller tests
-- **Integration Tests**: Use `@SpringBootTest` for full application tests
-- **Temporal Tests**: Use `temporal-testing` dependency for workflow testing
+# Always stop continuous processing when done
+curl -X POST http://localhost:8080/api/file-processing/test/stop-continuous
+```
 
-## Dependencies
+**Monitor System Performance**
+- Watch application logs for processing times
+- Check Temporal Web UI for workflow completion rates  
+- Monitor Kafka lag and throughput
+- Observe CPU and memory usage during load tests
 
-### Core Dependencies
-- **Spring Boot**: 3.2.3
-- **Spring Boot Web**: REST API support
-- **Spring Boot Actuator**: Monitoring and metrics
-- **Lombok**: Reduces boilerplate code
+## What You Should See
 
-### Temporal Dependencies
-- **Temporal SDK**: Core Temporal functionality (v1.22.4)
-- **Temporal Testing**: Testing utilities for workflows (v1.22.4)
+### 1. Kafka Messages
+- Messages published to `file-processing-requests` topic
+- Results published to `processing-results` topic
 
-## Contributing
+### 2. Temporal Workflows
+- Workflows visible in Temporal Web UI
+- Sequential execution: Virus Scan → Thumbnail Creation
+- Retry policies for failed activities
 
-1. Follow the established package structure
-2. Add appropriate tests for new functionality
-3. Use constructor injection for dependencies
-4. Follow Spring Boot best practices
-5. Add proper documentation and comments
+### 3. File Processing
+- Test files created in `./test-data/` directory
+- Thumbnails created in `./thumbnails/` directory
+- Configurable failure simulation (10% virus scan, 5% thumbnail)
 
-## License
+### 4. Application Logs
+```
+2025-07-19 11:xx:xx - Starting Temporal worker on task queue: file-processing-queue
+2025-07-19 11:xx:xx - [Consumer] Subscribed to topic(s): file-processing-requests
+2025-07-19 11:xx:xx - file-processors: partitions assigned: [file-processing-requests-0, 1, 2]
+2025-07-19 11:xx:xx - Received file processing message: fileId=abc-123
+2025-07-19 11:xx:xx - Starting file processing workflow for fileId: abc-123
+2025-07-19 11:xx:xx - Starting virus scan for file: ./test-data/sample_image.jpg
+2025-07-19 11:xx:xx - Virus scan completed successfully for file: ./test-data/sample_image.jpg
+2025-07-19 11:xx:xx - File is an image, creating thumbnail for: ./test-data/sample_image.jpg
+2025-07-19 11:xx:xx - Thumbnail created successfully for file: ./test-data/sample_image.jpg
+```
 
-This project is licensed under the Apache License 2.0. 
+## Architecture Components
+
+### Kafka Configuration
+- **Topics**: `file-processing-requests`, `processing-results`
+- **Partitions**: 3 (for parallel processing)
+- **Consumer Group**: `file-processors`
+
+### Temporal Configuration
+- **Namespace**: `default`
+- **Task Queue**: `file-processing-queue`
+- **Workflow**: `FileProcessingWorkflow`
+- **Activities**: `VirusScanActivity`, `ThumbnailActivity`
+
+### File Processing Flow
+1. **Kafka Message** → Consumer receives file processing request
+2. **Workflow Start** → Temporal workflow initiated
+3. **Virus Scan** → File scanned for viruses (simulated)
+4. **Conditional Thumbnail** → If clean + image file, create thumbnail
+5. **Result Publishing** → Results sent back to Kafka
+
+## Performance Characteristics
+- **Target**: 5,000 RPS, 5M documents/day
+- **Scalability**: Multiple consumer threads, Temporal worker pools
+- **Reliability**: Temporal retry policies, Kafka durability
+- **Monitoring**: Actuator endpoints, Temporal Web UI
+
+## Troubleshooting
+
+### Temporal Worker Not Starting
+1. Ensure Temporal server is running: `temporal server start-dev`
+2. Check application profile: `SPRING_PROFILES_ACTIVE=full`
+3. Verify logs show: "Starting Temporal worker on task queue"
+
+### Kafka Connection Issues
+1. Ensure Docker containers are running: `docker-compose ps`
+2. Check Kafka logs: `docker-compose logs kafka`
+
+### No Workflows Executing
+1. Verify worker registration in logs
+2. Check Temporal Web UI for workflow instances
+3. Ensure test data generation is working
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/hello` | GET | Service information |
+| `/api/file-processing/health` | GET | Processing service health |
+| `/api/file-processing/test/generate-random` | POST | Generate single test message |
+| `/api/file-processing/test/generate-batch?batchSize=N` | POST | Generate N test messages |
+| `/api/file-processing/test/start-continuous?messagesPerSecond=N` | POST | Start continuous load testing |
+| `/api/file-processing/test/stop-continuous` | POST | Stop continuous testing |
+
+## Success Criteria
+✅ Kafka consumers connected and processing messages  
+✅ Temporal worker registered and executing workflows  
+✅ Virus scan activity completing (with simulated results)  
+✅ Thumbnail creation for image files  
+✅ Sequential processing (scan → thumbnail)  
+✅ Results published back to Kafka  
+✅ Workflows visible in Temporal Web UI  
+✅ Configurable failure simulation working  
+✅ Load testing capabilities functional  
